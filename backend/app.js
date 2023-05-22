@@ -14,7 +14,7 @@ app.use(express.urlencoded({extended: false}))
 
 // resolver CORS
 
-app.use(cors({credentials: true, origin: "http://localhost:3000"}));
+app.use(cors({credentials: true, origin: "https://clonegramreactapp.netlify.app"}));
 
 // diretório de upload
 
