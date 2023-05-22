@@ -1,0 +1,202 @@
+npm i cors express express-validator validator jsonwebtoken multer bcryptjs mongoose dotenv
+npm i --save-dev nodemon
+
+cors = requisições da mesma origem(localhost)
+
+No app.js:
+app.use(cors({credentials: true, origin: "http://localhost:3000"}));
+
+/-----------------------------------------------------------------------------/
+
+express = criar a API
+
+No app.js:
+const express = require("express")
+const app = express()
+
+app.use("/uploads", express.static(path.join(__dirname, "/uploads")));
+app.use(express.json())
+app.use(express.urlencoded({extended: false}))
+
+No Router.js:
+const express = require("express")
+const router = express()
+ 
+router.use("/api/usuarios", require("./UserRoutes"))
+
+router.get("/", (req, res) => {
+    res.send("API Working!")
+})
+
+No UserRouter.js:
+const express = require("express")
+const router = express.Router()
+
+router.post("/registrar", userCreateValidation(), validate, register)
+
+/-----------------------------------------------------------------------------/
+
+express-validator = trabalhar entre as requisições para validar os dados
+
+No handleValidation.js:
+const {validationResult} = require("express-validator")
+
+const validate = (req, res, next) => {
+    const errors = validationResult(req)
+
+    if(errors.isEmpty()) {
+        return next();
+    }
+
+    const extractedErrors = []
+
+    errors.array().map((err) => extractedErrors.push(err.msg))
+
+    return res.status(422).json({
+        errors: extractedErrors
+    })
+}
+
+No userValidation.js:
+const {body} = require("express-validator")
+
+const userCreateValidation = () => {
+    return [
+        body("name").isString().withMessage("O nome é obrigatório!")
+    ]
+}
+
+No UserRoutes.js:
+const validate = require("../middlewares/handleValidation");
+const {userCreateValidation} = require("../middlewares/userValidation");
+
+router.post(userCreateValidation(), validate)
+
+/-----------------------------------------------------------------------------/
+
+jsonwebtoken = gerar id e autenticar o usuário
+
+No UserController.js:
+const jwt = require("jsonwebtoken")
+ 
+const jwtSecret = process.env.JWT_SECRET
+ 
+// Generate user token
+const generateToken = (id) => {
+    return jwt.sign({ id }, jwtSecret, {
+        expiresIn: "7d",
+    })
+}
+
+/-----------------------------------------------------------------------------/
+
+multer = trabalhar com upload de imagens
+
+No imageUpload.js:
+const multer = require("multer")
+
+const imageStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        let folder = ""
+        
+        if (req.baseUrl.includes("usuarios")) {
+            folder = "usuarios"
+        } else if (req.baseUrl.includes("photos")) {
+            folder = "photos"
+        }
+
+
+        cb(null, `uploads/${folder}/`)
+    },
+    filename: (req, file, cb) => {
+        cb(null, Date.now() + path.extname(file.originalname))
+    }
+})
+
+const imageUpload = multer({
+    storage: imageStorage,
+    fileFilter(req, file, cb) {
+        if(!file.originalname.match(/\.(png|jpg|jpeg|webp|svg)$/)) {
+            return cb(new Error("Por envie apenas arquivos png, webp, svg, jpg ou jpeg!"))
+        }
+        cb(undefined, true)
+    }
+})
+
+/-----------------------------------------------------------------------------/
+
+bcryptjs = biblioteca que permite manipular senhas
+
+No UserController.js:
+const bcrypt = require("bcryptjs")
+
+const {password} = req.body
+const salt = await bcrypt.genSalt()
+const passwordHash = await bcrypt.hash(password, salt)
+
+/-----------------------------------------------------------------------------/
+
+mongoose = usado para trabalhar com o MongoDB
+
+No db.js:
+const mongoose = require("mongoose");
+const dbUser = process.env.DB_USER;
+const dbPassword = process.env.DB_PASS;
+
+const conn = async () => {
+    try {
+        const dbConn = await mongoose.connect(`mongodb+srv://${dbUser}:${dbPassword}@cluster0.pixav30.mongodb.net/?retryWrites=true&w=majority`)
+        return dbConn
+    } catch (error) {
+        console.log(error);
+    }
+};
+
+conn()
+module.exports = conn;
+
+No User.js:
+const mongoose = require("mongoose");
+const {Schema} = mongoose;
+
+const userSchema = new Schema({});
+const User = mongoose.model("User", userSchema);
+module.exports = User;
+
+No UserController.js:
+const register = async (req, res) => {
+    const {name, profileName, email, password} = req.body
+
+    const user = await User.findOne({email})
+    const profileUser = await User.findOne({profileName})
+
+    if(user) {
+        res.status(422).json({errors: ["Email já está sendo utilizado!"]})
+    }
+    if(profileUser) {
+        res.status(422).json({errors: ["Nome do usuário já está sendo utilizado!"]})
+    }
+
+    const newUser = await User.create({
+    name,
+    profileName,
+    email,
+    password: passwordHash
+    })
+}
+
+
+/-----------------------------------------------------------------------------/
+
+dotenv = onde ficarão as variáveis do ambiente(domínio)
+
+No app.js:
+require("dotenv").config()
+const port = process.env.PORT;
+
+No .env: PORT=5000
+
+/-----------------------------------------------------------------------------/
+
+--save-dev nodemon = simular um servidor local
+No package.json: "server": "nodemon ./app.js"
