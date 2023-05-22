@@ -30,6 +30,10 @@ const router = require("./routes/Router.js")
 
 app.use(router);
 
+app.get("/", (req, res) => {
+    return res.json("Hello World");
+})
+
 app.listen(port, () => {
     console.log(`App rodando na porta ${port}`)
 })
