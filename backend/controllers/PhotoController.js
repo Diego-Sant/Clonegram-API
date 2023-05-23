@@ -211,7 +211,7 @@ const commentPhoto = async(req, res) => {
         userId: user._id
     }
 
-    photo.comments.findById(userComment);
+    photo.comments.push(userComment);
 
     await photo.save();
 
